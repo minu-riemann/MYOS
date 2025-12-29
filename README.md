@@ -1,6 +1,3 @@
-
-
-
 # 개발 방향
 
 ## Phase 1. Kernel Platform 안정화 (필수)
@@ -30,9 +27,9 @@
 + 간단 FS (처음엔 RAMFS → 이후 FAT/EXT2 read-only)
 
 
-
-
 ---
+
+# 파일구조
 
 ## boot/
 + entry.asm : 커널 엔트리 + 스택 + c로 점프
@@ -41,8 +38,15 @@
 + kernel.c : kernel_main() 엔트리
 + vga.c, vga.h : 화면 출력(printf 대체)
 
+## drivers/
++ serial/ serial.c, serial.h
+
 ##  linker.ld              
 + 커널이 메모리에 올라갈 위치 정의
 
 ##  Makefile               
 + 빌드/ISO/QEMU 실행 자동화
+
+---
+
+# 실행방법

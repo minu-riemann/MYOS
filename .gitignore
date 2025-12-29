@@ -17,3 +17,7 @@ qemu.log
 
 # OS generated
 .DS_Store
+
+# Build directories
+build/
+obj/    
