@@ -1,0 +1,19 @@
+# Build outputs
+*.o
+*.bin
+*.iso
+iso/
+build/
+
+# Debug
+*.elf
+*.map
+
+# QEMU
+qemu.log
+
+# VS Code
+.vscode/
+
+# OS generated
+.DS_Store
