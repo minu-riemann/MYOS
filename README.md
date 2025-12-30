@@ -49,7 +49,7 @@ Boots via GRUB (Multiboot), runs on QEMU, and provides a debuggable kernel platf
 
 ```text
 boot/
-  entry.asm            # 커널 엔트리 + 스택 설정 + C로 점프
+  entry.asm            # 커널 엔트리 + 스택 설정 + C로 점프 // “부트로더 세계 → 커널 세계 진입”
 
 arch/x86/
   gdt.c, gdt.h         # GDT 구성(Null/Code/Data)
@@ -72,6 +72,43 @@ linker.ld              # 링커 스크립트(메모리 레이아웃)
 Makefile               # 빌드/ISO/QEMU 실행
 
 ```
+
+## Theory Desc
+
+### GRUB = Boot loader
++ GRUB는 BIOS 이후 단계에서 실행되는 부트로더
++ 커널 바이너리를 메모리에 로드하고 CPU를 보호모드(32-bit)로 전환한 뒤, 커널의 엔트리 포인트(start)로 제어권을 넘긴다.
++ 이 프로젝트에서는 멀티부트 규격을 사용하여 GRUB가 커널을 인식하고 실행할 수 있도록 구성되어 있다.
+
+### GDT = Global Descriptor Table
++ x86 보호모드에서는 CPU가 메모리에 단순한 물리 주소로 접근하지 않는다.
++ 모든 메모리 접근은 세그먼트 디스크립터를 통해 이루어진다.
++ GDT는 다음을 정의한다:
+    + 코드 세그먼트(Code Segment)
+    + 데이터 세그먼트(Data Segment)
+    + 각 세그먼트의 권한(Ring level), 범위, 속성
+
+
+### IDT = Interrupt Descriptor Table
++ IDT는 인터럽트 또는 CPU 예외가 발생했을 때 CPU가 점프해야 할 코드 세그먼트와 함수 주소를 정의하는 테이블이다.
++ Divide by Zero (#DE), Invalid Opcode (#UD), Page Fault (#PF)와 같은 예외가 발생하면,
+CPU는 IDT를 참조하여 해당 예외를 처리할 핸들러로 제어를 이동한다.
+
+### ISR Stub (Interrupt Service Routine Stub)
++ CPU가 인터럽트나 예외를 발생시키면, 레지스터와 스택 상태는 C 함수 호출 규약과 호환되지 않는 형태로 전달된다.
++ SR Stub은 이 간극을 메우는 어셈블리 코드로, 다음 역할을 수행한다:
+    + CPU가 저장한 레지스터 상태를 보존
+    + C 코드가 처리할 수 있는 형태로 스택을 정리
+    + C 기반 예외/인터럽트 핸들러 호출
+    + iret 명령을 통해 원래 실행 흐름으로 복귀
++ 이를 통해 하드웨어 이벤트를 C 코드에서 안전하게 처리할 수 있다.
+
+### Panic / Serial Output (디버깅 기반)
++ 커널은 크래시 발생 시 운영체제의 도움을 받을 수 없기 때문에, 자체적인 디버깅 수단이 필수적이다.
++ 본 프로젝트에서는:
+    +Serial(COM1)을 이용한 로그 출력
+    +치명적 오류 발생 시 panic()을 통한 시스템 정지
++ 를 구현하여,QEMU 환경에서 커널 내부 상태를 관찰할 수 있도록 구성하였다.
 
 ## Build & Run
 ### Requirements (WSL/Ubuntu)

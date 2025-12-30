@@ -17,8 +17,13 @@ extern kernel_main
 
 ; 커널의 진짜 시작점 (OS에는 일반적인 진입점(main함수)이 없음)
 start:
+
+    ; Interrupts Disable
+    cli
+
     ; Set up stack
-    mov esp, stack_top ;esp: 스택 포인터 레지스터 설정 / 스택이 없으면 C함수 호출이 깨짐
+    mov esp, stack_top      ;esp: 스택 포인터 레지스터 설정 / 스택이 없으면 C함수 호출이 깨짐
+    and esp, 0xFFFFFFF0     ; 16-byte alignment 보장 (권장)
 
     ; Call the kernel main function
     call kernel_main

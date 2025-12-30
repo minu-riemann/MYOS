@@ -21,3 +21,6 @@ qemu.log
 # Build directories
 build/
 obj/    
+
+# Roadmap files
+ROADMAP.md
