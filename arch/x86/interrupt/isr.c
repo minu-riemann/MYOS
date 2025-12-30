@@ -1,7 +1,7 @@
 #include "isr.h"
-#include "../../drivers/serial/serial.h"
-#include "../../kernel/vga.h"
-#include "../../kernel/panic/panic.h"
+#include "../../../drivers/serial/serial.h"
+#include "../../../kernel/vga.h"
+#include "../../../kernel/panic/panic.h"
 
 static const char* exception_messages[32] = {
     "Division By Zero (#DE)",

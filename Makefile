@@ -48,19 +48,19 @@ $(OBJ_DIR)/serial.o: drivers/serial/serial.c drivers/serial/serial.h | $(OBJ_DIR
 $(OBJ_DIR)/panic.o: kernel/panic/panic.c kernel/panic/panic.h | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/idt.o: arch/x86/idt.c arch/x86/idt.h | $(OBJ_DIR)
+$(OBJ_DIR)/gdt.o: arch/x86/cpu/gdt.c arch/x86/cpu/gdt.h | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/isr.o: arch/x86/isr.c arch/x86/isr.h | $(OBJ_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/gdt.o: arch/x86/gdt.c arch/x86/gdt.h | $(OBJ_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/gdt_flush.o: arch/x86/gdt_flush.asm | $(OBJ_DIR)
+$(OBJ_DIR)/gdt_flush.o: arch/x86/cpu/gdt_flush.asm | $(OBJ_DIR)
 	$(NASM) -f elf32 $< -o $@
 
-$(OBJ_DIR)/isr_stub.o: arch/x86/isr_stub.asm | $(OBJ_DIR)
+$(OBJ_DIR)/idt.o: arch/x86/interrupt/idt.c arch/x86/interrupt/idt.h | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/isr.o: arch/x86/interrupt/isr.c arch/x86/interrupt/isr.h | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/isr_stub.o: arch/x86/interrupt/isr_stub.asm | $(OBJ_DIR)
 	$(NASM) -f elf32 $< -o $@
 
 $(BUILD_DIR)/$(TARGET).bin: $(OBJS) linker.ld | $(BUILD_DIR)

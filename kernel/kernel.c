@@ -2,26 +2,8 @@
 #include "vga.h"
 #include "../kernel/panic/panic.h"
 
-#include "../arch/x86/gdt.h"
-#include "../arch/x86/idt.h"
-
-static void trigger_div0(void) {
-    volatile int zero = 0;
-    volatile int one = 1;
-    (void)(one / zero);
-}
-
-static void trigger_div0_hw(void) {
-    __asm__ __volatile__(
-        "xor %%edx, %%edx \n"
-        "mov $1, %%eax   \n"
-        "mov $0, %%ecx   \n"
-        "div %%ecx       \n"  // ecx=0 -> #DE
-        :
-        :
-        : "eax", "ecx", "edx"
-    );
-}
+#include "../arch/x86/cpu/gdt.h"
+#include "../arch/x86/interrupt/idt.h"
 
 static void trigger_ud2(void) {
     __asm__ __volatile__("ud2");
