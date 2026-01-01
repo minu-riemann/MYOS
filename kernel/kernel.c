@@ -62,6 +62,10 @@ void kernel_main(uint32_t magic, uint32_t mb_addr) {
     pit_init(100); // 100Hz tick
     time_set_hz(100);
 
+    // 인터럽트 활성화 (키보드 입력을 받기 위해 필요)
+    kprintf("[INFO] Enabling interrupts (sti)\n");
+    __asm__ __volatile__("sti");
+
     // -------------------------
     // STEP2: Multiboot mmap
     // -------------------------
@@ -120,8 +124,10 @@ void kernel_main(uint32_t magic, uint32_t mb_addr) {
     // 부팅 화면 메시지 (일반 정보)
     kprintf_puts_at(2, 2, "MYOS Phase1 Test Kernel");
     kprintf_puts_at(4, 2, "See console for logs.");
+    kprintf_puts_at(6, 2, "Type keys to test keyboard!");
 
     kprintf("[INFO] Phase1 platform up. Entering idle loop.\n");
+    kprintf("[INFO] Keyboard ready - type keys to test input.\n");
     kprintf("[INFO] (Optional) enable PF test by uncommenting below.\n");
 
     // -------------------------
@@ -131,7 +137,7 @@ void kernel_main(uint32_t magic, uint32_t mb_addr) {
     // trigger_pf_null_read();
 
     // -------------------------
-    // idle loop
+    // idle loop (키보드 입력은 IRQ로 처리됨)
     // -------------------------
     while (1) {
         __asm__ __volatile__("hlt");

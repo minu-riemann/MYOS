@@ -1,8 +1,7 @@
 #include "keyboard.h"
-#include "../../kernel/lib/itoa.h"
+#include "../../kernel/console/kprintf.h"
 #include "../../arch/x86/interrupt/irq.h"
 #include "../../arch/x86/io/ports.h"
-#include "../serial/serial.h"
 
 static const char scancode_to_ascii[128] = {
     0, 27, '1', '2', '3', '4', '5', '6', '7', '8',    // 0-9
@@ -38,22 +37,14 @@ static void keyboard_irq(regs_t* r) {
     char c = 0;
     if (sc < 128) c = scancode_to_ascii[sc];
 
-    serial_write("[KBD] sc=");
-    char buf[11];
-    u32_to_hex(sc, buf);
-    serial_write(buf);
-
     if (c) {
-        serial_write(" '");
-        char s[2] = {c, 0};
-        serial_write(s);
-        serial_write("'");
+        kprintf("[KBD] sc=0x%x '%c'\n", sc, c);
+    } else {
+        kprintf("[KBD] sc=0x%x (no ASCII)\n", sc);
     }
-
-    serial_write("\n");
 }
 
 void keyboard_init(void) {
     irq_register_handler(1, keyboard_irq);
-    serial_write("[INFO] Keyboard IRQ handler registered\n");
+    kprintf("[INFO] Keyboard IRQ handler registered\n");
 }
