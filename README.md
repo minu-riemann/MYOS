@@ -24,6 +24,9 @@ implementation of CPU setup, interrupt handling, and hardware timers
 - [x] Kernel memory layout detection
 - [x] Kernel heap allocator (bump allocator)
 - [x] kmalloc/kmalloc_aligned implementation
+- [x] kprintf console (VGA + Serial unified output)
+- [x] Unified logging system (all logs via kprintf)
+- [x] Error display system (panic/exceptions via kprintf_puts_at)
 
 **Verified behavior**
 - `ud2` triggers **#UD (Invalid Opcode)**  
@@ -31,7 +34,11 @@ implementation of CPU setup, interrupt handling, and hardware timers
 - PIT IRQ0 generates periodic ticks  
   → `[TICK] 100 ticks` after `sti`
 - Heap allocator initializes from Multiboot memory map
-  → `kmalloc()` returns aligned addresses, OOM detection works
+  → `kmalloc()` returns aligned addresses, OOM detection works\
+- kprintf supports %d, %x, %s, %u, %c formats
+  → Unified output to both VGA console and Serial port
+- Panic and exceptions display on screen via kprintf_puts_at
+  → Critical errors visible on VGA, detailed logs via kprintf
 
 ## Development Roadmap
 
@@ -90,7 +97,8 @@ drivers/
 
 kernel/
   kernel.c                 # kernel_main()
-  vga.c, vga.h             # VGA text-mode output
+  console/
+    kprintf.c, kprintf.h   # Formatted output (VGA + Serial)
   memory/
     multiboot.c, multiboot.h  # Multiboot info parsing, memory map
     heap.c, heap.h           # Kernel heap allocator (bump allocator)
@@ -169,6 +177,14 @@ CPU는 IDT를 참조하여 해당 예외를 처리할 핸들러로 제어를 이
 + `kmalloc_aligned(size, align)`: 사용자 지정 정렬 할당
 + 메모리 부족 시 OOM(Out Of Memory) 감지 및 패닉
 + Phase 1에서는 단순한 bump allocator로, Phase 2에서 free() 지원 예정
+
+### Unified Logging System
++ 모든 로그 출력을 kprintf로 통일
++ 일반 로그: kprintf() 사용 (VGA + Serial 동시 출력)
++ 심각한 오류(panic, 예외): kprintf_puts_at()으로 화면 표시 + kprintf()로 상세 로그
++ IRQ/예외 중첩 안전성: kprintf 내부 lock/unlock 메커니즘
++ 디버깅 생산성 향상: 포맷 문자열 지원으로 일관된 로그 형식
++ 모든 출력 경로가 kprintf로 통일됨
 
 ## Build & Run
 ### Requirements (WSL/Ubuntu)

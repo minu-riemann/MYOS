@@ -21,10 +21,10 @@ LDFLAGS := -m elf_i386 -T linker.ld
 C_SRCS := \
   kernel/lib/itoa.c \
   kernel/kernel.c \
-  kernel/vga.c \
   kernel/memory/multiboot.c \
   kernel/memory/heap.c \
   kernel/panic/panic.c \
+  kernel/console/kprintf.c \
   drivers/serial/serial.c \
   drivers/keyboard/keyboard.c \
   arch/x86/cpu/gdt.c \

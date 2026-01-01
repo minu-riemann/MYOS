@@ -1,16 +1,9 @@
 #include "isr.h"
 #include "../../../drivers/serial/serial.h"
 #include "../../../kernel/lib/itoa.h" 
-#include "../../../kernel/vga.h"
+#include "../../../kernel/console/kprintf.h"
 #include "../../../kernel/panic/panic.h"
 #include "irq.h"
-
-static void serial_hex(const char* key, uint32_t v) {
-   char buf[11];
-   serial_write(key);
-   u32_to_hex(v, buf);
-   serial_write(buf);
-}
 
 static const char* exception_messages[32] = {
     "Division By Zero (#DE)",
@@ -52,40 +45,28 @@ static void pf_print_reason(uint32_t err) {
     int is_rsvd       = (err & 0x8) != 0;
     int is_ifetch     = (err & 0x10) != 0;
 
-    serial_write("  cause: ");
-    serial_write(is_protection ? "protection-violation" : "non-present");
-    serial_write(", ");
-    serial_write(is_write ? "write" : "read");
-    serial_write(", ");
-    serial_write(is_user ? "user" : "kernel");
+    kprintf("  cause: %s, %s, %s",
+      is_protection ? "protection-violation" : "non-present",
+      is_write ? "write" : "read",
+      is_user ? "user" : "kernel");
 
-    if (is_rsvd)  serial_write(", rsvd");
-    if (is_ifetch) serial_write(", instr-fetch");
-    serial_write("\n");
+    if (is_rsvd)  kprintf(", rsvd");
+    if (is_ifetch) kprintf(", instr-fetch");
+    kprintf("\n");
 }
 
 static void dump_regs(regs_t* r) {
-   serial_hex("  eip=", r->eip);
-   serial_hex(" cs=", r->cs);
-   serial_hex(" eflags=", r->eflags);
-   serial_write("\n");
+   kprintf("  eip=0x%x cs=0x%x eflags=0x%x\n",
+      r->eip, r->cs, r->eflags);
 
-   serial_hex("  eax=", r->eax);
-   serial_hex(" ebx=", r->ebx);
-   serial_hex(" ecx=", r->ecx);
-   serial_hex(" edx=", r->edx);
-   serial_write("\n");
+  kprintf("  eax=0x%x ebx=0x%x ecx=0x%x edx=0x%x\n",
+      r->eax, r->ebx, r->ecx, r->edx);
 
-   serial_hex("  esi=", r->esi);
-   serial_hex(" edi=", r->edi);
-   serial_hex(" ebp=", r->ebp);
-   serial_hex(" esp=", r->esp);      // pusha가 저장한 esp(예외 시점의 esp 스냅샷)
-   serial_write("\n");
+  kprintf("  esi=0x%x edi=0x%x ebp=0x%x esp=0x%x\n",
+      r->esi, r->edi, r->ebp, r->esp);
 
-   // ring3에서 들어온 경우에만 유의미하지만, 찍어두면 나중에 확장에 도움됨
-   serial_hex("  useresp=", r->useresp);
-   serial_hex(" ss=", r->ss);
-   serial_write("\n");
+  kprintf("  useresp=0x%x ss=0x%x\n",
+      r->useresp, r->ss);
 }
 
 
@@ -101,19 +82,16 @@ void isr_handler(regs_t* r) {
    if (r->int_no == 14) {
       uint32_t cr2 = read_cr2();
 
-      // VGA는 간단히 안내만 (기존 유지)
-      vga_clear();
-      vga_puts_at(2, 2, "PAGE FAULT (#PF)");
-      vga_puts_at(4, 2, "See serial for details.");
-
-      // Serial은 표준 포맷으로 상세 출력
-      serial_write("\n==============================\n");
-      serial_write("[EXC] Page Fault (#PF)\n");
-      serial_write("==============================\n");
-
-      serial_hex("  cr2=", cr2);
-      serial_hex(" err=", r->err_code);
-      serial_write("\n");
+      // 화면에 심각한 오류 표시
+      kprintf_clear_console();
+      kprintf_puts_at(2, 2, "PAGE FAULT (#PF)");
+      kprintf_puts_at(4, 2, "See console for details.");
+      
+      // 상세 로그는 kprintf로
+      kprintf("\n==============================\n");
+      kprintf("[EXC] Page Fault (#PF)\n");
+      kprintf("==============================\n");
+      kprintf("  cr2=0x%x err=0x%x\n", cr2, r->err_code);
 
       pf_print_reason(r->err_code);
       dump_regs(r);
@@ -123,33 +101,16 @@ void isr_handler(regs_t* r) {
    } else if (r->int_no < 32) {
       const char* name = exception_messages[r->int_no];
 
-      // VGA 출력
-      vga_clear();
-      vga_puts_at(2, 2, "EXCEPTION!");
-      vga_puts_at(4, 2, name);
+      // 화면에 심각한 오류 표시
+      kprintf_clear_console();
+      kprintf_puts_at(2, 2, "EXCEPTION!");
+      kprintf_puts_at(4, 2, name);
 
-      // Serial: 상세로그
-      serial_write("[EXC] ");
-      serial_write(name);
-      serial_write("\n");
+      // 상세 로그는 kprintf로
+      kprintf("[EXC] %s\n", name);
+      kprintf("  int_no=0x%x err=0x%x\n", r->int_no, r->err_code);
+      kprintf("  eip=0x%x cs=0x%x eflags=0x%x\n", r->eip, r->cs, r->eflags);
 
-      char buf[11];
-
-      serial_write("  int_no=");
-      u32_to_hex(r->int_no, buf);  serial_write(buf);
-      serial_write("  err=");
-      u32_to_hex(r->err_code, buf);  serial_write(buf);
-      serial_write("\n");
-
-      serial_write("  eip=");
-      u32_to_hex(r->eip, buf);  serial_write(buf);
-      serial_write("  cs=");
-      u32_to_hex(r->cs, buf);  serial_write(buf);
-      serial_write("  eflags=");
-      u32_to_hex(r->eflags, buf);  serial_write(buf);
-      serial_write("\n");
-
-      // 최종적으로 panic으로 정지 (상태 통일)
       panic("CPU exception trapped. System halted.");
 
    } else if (r->int_no >= 32 && r->int_no < 48) {
@@ -157,12 +118,8 @@ void isr_handler(regs_t* r) {
       irq_dispatch(r);
       return;
    } else {
-      // 알 수 없는 인터럽트
-      serial_write("[WARN] Unknown interrupt received: ");
-      char buf[11];
-      u32_to_hex(r->int_no, buf);
-      serial_write(buf);
-      serial_write("\n");
+      // 알 수 없는 인터럽트 (경고 로그)
+      kprintf("[WARN] Unknown interrupt received: 0x%x\n", r->int_no);
    }
 
 }
