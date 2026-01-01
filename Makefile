@@ -22,6 +22,7 @@ C_SRCS := \
   kernel/lib/itoa.c \
   kernel/kernel.c \
   kernel/vga.c \
+  kernel/memory/multiboot.c \
   kernel/panic/panic.c \
   drivers/serial/serial.c \
   drivers/keyboard/keyboard.c \

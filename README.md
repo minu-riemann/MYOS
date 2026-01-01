@@ -20,6 +20,8 @@ implementation of CPU setup, interrupt handling, and hardware timers
 - [x] PIT timer interrupt (tick verified)
 - [x] Paging enabled (minimal identity mapping)
 - [x] Page Fault (#PF) handler (CR2 + error code logging)
+- [x] Multiboot memory map parsing
+- [x] Kernel memory layout detection
 
 **Verified behavior**
 - `ud2` triggers **#UD (Invalid Opcode)**  
@@ -86,6 +88,8 @@ drivers/
 kernel/
   kernel.c                 # kernel_main()
   vga.c, vga.h             # VGA text-mode output
+  memory/
+    multiboot.c, multiboot.h  # Multiboot info parsing, memory map
   panic/
     panic.c, panic.h       # panic() implementation
   lib/
@@ -146,6 +150,12 @@ CPU는 IDT를 참조하여 해당 예외를 처리할 핸들러로 제어를 이
 + 페이징 변환/권한 위반 시 발생
 + CR2: fault가 난 선형주소(linear address) 저장 레지스터
 + err_code: not-present / write / user / reserved-bit / instruction-fetch 등의 원인 비트
+
+### Multiboot Memory Map
++ GRUB이 제공하는 Multiboot 정보 구조체에서 물리 메모리 맵을 파싱
++ 사용 가능한 메모리 영역과 예약된 영역을 식별
++ 가장 큰 사용 가능한 메모리 영역을 찾아 힙 할당 준비
++ 커널 끝 주소(`__kernel_end`)를 기준으로 힙 영역 설정 가능
 
 ## Build & Run
 ### Requirements (WSL/Ubuntu)
