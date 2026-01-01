@@ -2,7 +2,8 @@
 #include "isr.h"
 #include "pic.h"
 #include "pit.h"
-#include "../../../drivers/serial/serial.h"
+#include "../../../kernel/console/kprintf.h"
+#include "../../../kernel/time/time.h"
 
 #define IRQ_BASE 32
 
@@ -15,10 +16,11 @@ void irq_register_handler(uint8_t irq, irq_handler_t handler) {
 static void irq0_timer(regs_t* r) {
     (void)r;
     pit_on_tick();
+    time_on_tick();
 
     // 너무 자주 로그를 출력하면 안되므로, 100틱 처리
     if ((pit_ticks() % 100)  == 0) {
-        serial_write("[TICK] 100 ticks\n");
+        kprintf("[TICK] 100 ticks\n");
     }
 }
 
@@ -35,7 +37,7 @@ void irq_init(void) {
     pic_clear_mask(0); // IRQ0(timer) Enable
     pic_clear_mask(1);
 
-    serial_write("[INFO] PIC remapped, IRQ0/IRQ1 unmasked\n");
+    kprintf("[INFO] PIC remapped, IRQ0/IRQ1 unmasked\n");
 }
 
 // isr_handler에서 호출될 IRQ 공통 핸들러
@@ -46,7 +48,7 @@ void irq_dispatch(regs_t* r) {
        if (g_irq_handlers[irq]) {
         g_irq_handlers[irq](r);
        } else {
-        serial_write("[WARN] Unhandled IRQ\n");
+        kprintf("[WARN] Unhandled IRQ\n");
        }
     }
 

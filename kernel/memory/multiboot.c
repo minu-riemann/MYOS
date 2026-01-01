@@ -1,53 +1,41 @@
 #include "multiboot.h"
-#include "../../drivers/serial/serial.h"
-#include "../lib/itoa.h"
+#include "../console/kprintf.h"
 #include "../panic/panic.h"
-
-static void serial_hex32(uint32_t v) {
-    char buf[11];
-    u32_to_hex(v, buf);
-    serial_write(buf);
-}
-
-static void serial_hex64(uint64_t v) {
-    // Phase1은 32-bit 커널이므로 보통 4GB 미만만 쓰게 됩니다.
-    // 그래도 mmap이 64-bit를 쓰므로 상/하를 나눠 출력.
-
-    uint32_t hi = (uint32_t)(v >> 32);
-    uint32_t lo = (uint32_t)(v & 0xFFFFFFFF);
-
-    serial_write("0x");
-    char buf[11];
-    u32_to_hex(hi, buf); serial_write(buf+2); // "0x" 중복 제거용(유틸에 맞춰 조정 가능)
-    u32_to_hex(lo, buf); serial_write(buf+2);
-}
 
 void multiboot_dump_memory_map(uint32_t mb_addr) {
     multiboot_info_t* mb = (multiboot_info_t*)mb_addr;
 
-    serial_write("[MMAP] Found ="); serial_hex32(mb->flags); serial_write("\n");
+    kprintf("[MMAP] Found =0x%x\n", mb->flags);
 
     // bit6: mmap_* fields are valid
     if ((mb->flags & (1 << 6)) == 0) {
-        serial_write("[MB] mmap not available (flags bit6 not set)\n");
+        kprintf("[MB] mmap not available (flags bit6 not set)\n");
         return;
     }
 
-    serial_write("[MB] mmap_addr="); serial_hex32(mb->mmap_addr);
-    serial_write(" mmap_length="); serial_hex32(mb->mmap_length);
-    serial_write("\n");
+    kprintf("[MB] mmap_addr=0x%x mmap_length=0x%x\n", mb->mmap_addr, mb->mmap_length);
 
     uint32_t mmap_end = mb->mmap_addr + mb->mmap_length;
     multiboot_mmap_entry_t* e = (multiboot_mmap_entry_t*)mb->mmap_addr;
 
     while ((uint32_t)e < mmap_end) {
-        serial_write("  [MB] entry addr=");
-        serial_hex64(e->addr);
-        serial_write(" len="); 
-        serial_hex64(e->len);
-        serial_write(" type="); 
-        serial_hex32(e->type);
-        serial_write(e->type == 1 ? " (usable)\n" : " (reserved)\n");
+        // 64-bit 주소를 출력하기 위해 상/하위 32비트 분리
+        uint32_t addr_hi = (uint32_t)(e->addr >> 32);
+        uint32_t addr_lo = (uint32_t)(e->addr & 0xFFFFFFFF);
+        uint32_t len_hi = (uint32_t)(e->len >> 32);
+        uint32_t len_lo = (uint32_t)(e->len & 0xFFFFFFFF);
+
+        if (addr_hi == 0 && len_hi == 0) {
+            // 32-bit 범위 내면 간단히 출력
+            kprintf("  [MB] entry addr=0x%x len=0x%x type=0x%x %s\n",
+                addr_lo, len_lo, e->type,
+                e->type == 1 ? "(usable)" : "(reserved)");
+        } else {
+            // 64-bit 주소면 상/하위 분리 출력
+            kprintf("  [MB] entry addr=0x%x%08x len=0x%x%08x type=0x%x %s\n",
+                addr_hi, addr_lo, len_hi, len_lo, e->type,
+                e->type == 1 ? "(usable)" : "(reserved)");
+        }
 
         // advance: size field + entry body
         e = (multiboot_mmap_entry_t*)((uint32_t)e + e->size + sizeof(e->size));

@@ -27,6 +27,8 @@ implementation of CPU setup, interrupt handling, and hardware timers
 - [x] kprintf console (VGA + Serial unified output)
 - [x] Unified logging system (all logs via kprintf)
 - [x] Error display system (panic/exceptions via kprintf_puts_at)
+- [x] Time management (PIT-based tick counter)
+- [x] sleep(ms) implementation (busy-wait)
 
 **Verified behavior**
 - `ud2` triggers **#UD (Invalid Opcode)**  
@@ -34,21 +36,26 @@ implementation of CPU setup, interrupt handling, and hardware timers
 - PIT IRQ0 generates periodic ticks  
   → `[TICK] 100 ticks` after `sti`
 - Heap allocator initializes from Multiboot memory map
-  → `kmalloc()` returns aligned addresses, OOM detection works\
+  → `kmalloc()` returns aligned addresses, OOM detection works
 - kprintf supports %d, %x, %s, %u, %c formats
   → Unified output to both VGA console and Serial port
 - Panic and exceptions display on screen via kprintf_puts_at
   → Critical errors visible on VGA, detailed logs via kprintf
+- sleep(ms) works with PIT tick counter
+  → Time-based delays functional for driver/application use
 
 ## Development Roadmap
 
-### Phase 1. Kernel Platform Stabilization (current)
+### Phase 1. Kernel Platform Stabilization ✅ COMPLETE
 **Goal: A fully debuggable kernel platform**
-- Serial logging (COM1) + panic + assert
-- GDB debugging via QEMU (`-s -S`) with ELF symbols
-- CPU exception handling (#DE, #UD, #PF, etc.)
-- PIC remap and IRQ dispatch framework
-- PIT-based timer tick (time foundation)
+- [x] Serial logging (COM1) + panic + assert
+- [x] GDB debugging via QEMU (`-s -S`) with ELF symbols
+- [x] CPU exception handling (#DE, #UD, #PF, etc.)
+- [x] PIC remap and IRQ dispatch framework
+- [x] PIT-based timer tick (time foundation)
+- [x] sleep(ms) implementation
+- [x] Unified logging system (kprintf)
+- [x] Memory management (heap allocator)
 
 ### Phase 2. RTOS Track (MCU / Automotive / Embedded)
 **Goal: Implement a FreeRTOS-class kernel**
@@ -99,6 +106,8 @@ kernel/
   kernel.c                 # kernel_main()
   console/
     kprintf.c, kprintf.h   # Formatted output (VGA + Serial)
+  time/
+    time.c, time.h         # Time management, sleep(ms)
   memory/
     multiboot.c, multiboot.h  # Multiboot info parsing, memory map
     heap.c, heap.h           # Kernel heap allocator (bump allocator)
@@ -185,6 +194,15 @@ CPU는 IDT를 참조하여 해당 예외를 처리할 핸들러로 제어를 이
 + IRQ/예외 중첩 안전성: kprintf 내부 lock/unlock 메커니즘
 + 디버깅 생산성 향상: 포맷 문자열 지원으로 일관된 로그 형식
 + 모든 출력 경로가 kprintf로 통일됨
+
+### Time Management and sleep(ms)
++ PIT 기반 monotonic tick 카운터 구현
++ `timer_ticks()`: 현재 tick 값 반환 (64-bit, 오버플로우 안전)
++ `time_set_hz()`: PIT 주파수 설정 (pit_init 이후 호출 필요)
++ `sleep_ms(ms)`: 밀리초 단위 대기 함수 (busy-wait 방식)
++ Phase 1에서는 간단한 busy-wait 구현, Phase 2에서 인터럽트 기반 개선 예정
++ 32비트 나눗셈만 사용하여 freestanding 환경 호환성 보장
++ hlt 명령으로 CPU 전력 소비 최소화
 
 ## Build & Run
 ### Requirements (WSL/Ubuntu)

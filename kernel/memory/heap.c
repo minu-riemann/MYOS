@@ -1,7 +1,6 @@
 #include "heap.h"
 #include "../panic/panic.h"
-#include "../../drivers/serial/serial.h"
-#include "../lib/itoa.h"
+#include "../console/kprintf.h"
 
 static uint32_t g_heap_start = 0;
 static uint32_t g_heap_end   = 0;
@@ -11,13 +10,6 @@ static inline uint32_t align_up(uint32_t v, uint32_t align) {
     if (align == 0) return v;
     uint32_t mask = align - 1;
     return (v + mask) & ~mask;
-}
-
-static void serial_hex32(const char* key, uint32_t v) {
-    char buf[11];
-    serial_write(key);
-    u32_to_hex(v, buf);
-    serial_write(buf);
 }
 
 void heap_init(uint32_t heap_start, uint32_t heap_end) {
@@ -32,9 +24,9 @@ void heap_init(uint32_t heap_start, uint32_t heap_end) {
     g_heap_end = heap_end;
     g_heap_cur = heap_start;
 
-    serial_write("[HEAP] init\n");
-    serial_hex32("  start=", g_heap_start); serial_write("\n");
-    serial_hex32("  end  =", g_heap_end);   serial_write("\n");
+    kprintf("[HEAP] init\n");
+    kprintf("  start=0x%x\n", g_heap_start);
+    kprintf("  end  =0x%x\n", g_heap_end);
 }
 
 void *kmalloc(size_t size) {
@@ -55,10 +47,10 @@ void *kmalloc_aligned(size_t size, uint32_t align) {
 
     // overflow + bounds check
     if (next < cur || next > g_heap_end) {
-        serial_write("[HEAP] OOM\n");
-        serial_hex32("  cur=", g_heap_cur); serial_write("\n");
-        serial_hex32("  req=", (uint32_t)size); serial_write("\n");
-        serial_hex32("  end=", g_heap_end); serial_write("\n");
+        kprintf("[HEAP] OOM\n");
+        kprintf("  cur=0x%x\n", g_heap_cur);
+        kprintf("  req=0x%x\n", (uint32_t)size);
+        kprintf("  end=0x%x\n", g_heap_end);
         panic("kmalloc: out of memory");
     }
 

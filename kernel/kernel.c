@@ -11,7 +11,6 @@
 #include "../arch/x86/interrupt/pit.h"
 
 #include "console/kprintf.h"
-#include "lib/itoa.h"
 
 extern uint32_t __kernel_end;
 
@@ -21,10 +20,6 @@ extern uint32_t __kernel_end;
 static inline uint32_t align_up(uint32_t v, uint32_t a) {
     uint32_t m = a - 1;
     return (v + m) & ~m;
-}
-
-static void log_ptr(const char* key, const void* p) {
-    log_u32(key, (uint32_t)p);
 }
 
 // (선택) 페이지 폴트 테스트
@@ -65,6 +60,7 @@ void kernel_main(uint32_t magic, uint32_t mb_addr) {
 
     kprintf("[INFO] init PIT...\n");
     pit_init(100); // 100Hz tick
+    time_set_hz(100);
 
     // -------------------------
     // STEP2: Multiboot mmap
@@ -131,7 +127,7 @@ void kernel_main(uint32_t magic, uint32_t mb_addr) {
     // -------------------------
     // (선택) PF 테스트: 하나만 켜세요
     // -------------------------
-    trigger_pf_null_write();
+    // trigger_pf_null_write();
     // trigger_pf_null_read();
 
     // -------------------------

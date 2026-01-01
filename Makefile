@@ -25,6 +25,7 @@ C_SRCS := \
   kernel/memory/heap.c \
   kernel/panic/panic.c \
   kernel/console/kprintf.c \
+  kernel/time/time.c \
   drivers/serial/serial.c \
   drivers/keyboard/keyboard.c \
   arch/x86/cpu/gdt.c \
