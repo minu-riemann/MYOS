@@ -1,87 +1,96 @@
 # MYOS
 
-A small educational x86 (i386) OS kernel project built from scratch.
+A small educational x86 (i386) OS kernel built from scratch.
 
-Boots via GRUB (Multiboot), runs on QEMU, and provides a **debuggable kernel platform**
+Boots via **GRUB (Multiboot)**, runs on **QEMU**, and provides a **debuggable kernel platform**
 designed as a foundation for both **RTOS-style kernels** and **Linux-like operating systems**.
 
+This project focuses on understanding low-level OS fundamentals through hands-on
+implementation of CPU setup, interrupt handling, and hardware timers
 
 ## Current Status
 
 - [x] GRUB Multiboot bootable kernel
-- [x] VGA text output
+- [x] VGA text-mode output
 - [x] Serial debug output (COM1)
-- [x] Panic / assert 기반 커널 정지 루틴
+- [x] Panic / assert-based kernel halt
 - [x] GDT (Null / Kernel Code / Kernel Data)
 - [x] IDT + CPU exception handling
 - [x] PIC remap + IRQ handling
 - [x] PIT timer interrupt (tick verified)
 
-> Verified:
-> - `ud2` triggers #UD → ISR handler prints CPU context and halts via panic  
-> - PIT IRQ0 generates periodic ticks (`[TICK] 100 ticks`) after `sti`
+**Verified behavior**
+- `ud2` triggers **#UD (Invalid Opcode)**  
+  → ISR prints CPU context and halts via `panic()`
+- PIT IRQ0 generates periodic ticks  
+  → `[TICK] 100 ticks` after `sti`
 
 
 ## Development Roadmap
 
-### Phase 1. Kernel Platform 안정화 (필수)
-**목표: “디버깅 가능한 커널 플랫폼” 확보**
-- Serial 로그(COM1) + panic + assert
-- GDB 연결(QEMU `-s -S`) + ELF 심볼 유지
-- IDT + 예외 처리 (#DE, #UD, #PF 등)
-- PIC 리맵 + IRQ 처리 기반
-- PIT 타이머 tick (시간 기반)
+### Phase 1. Kernel Platform Stabilization (current)
+**Goal: A fully debuggable kernel platform**
+- Serial logging (COM1) + panic + assert
+- GDB debugging via QEMU (`-s -S`) with ELF symbols
+- CPU exception handling (#DE, #UD, #PF, etc.)
+- PIC remap and IRQ dispatch framework
+- PIT-based timer tick (time foundation)
 
 ### Phase 2. RTOS Track (MCU / Automotive / Embedded)
-**목표: “FreeRTOS급 커널을 직접 구현”**
-- 프리엠티브 스케줄러 (우선순위 기반)
-- 태스크 생성/삭제 및 스택 관리
-- PIT 기반 time slicing
-- IPC (세마포어 / 뮤텍스 / 큐 중 최소 2종)
-- 소프트 타이머 + sleep(ms)
+**Goal: Implement a FreeRTOS-class kernel**
+- Preemptive scheduler (priority-based)
+- Task creation/destruction and stack management
+- PIT-based time slicing
+- IPC primitives (semaphore / mutex / queue, at least two)
+- Software timers and `sleep(ms)`
 
-### Phase 3. Linux Track (Process / Syscall / User mode)
-**목표: “Linux-like 구조를 갖춘 미니 OS”**
-- Paging 정착 + 커널 주소공간 설계
-- 프로세스 (주소공간 분리) + 컨텍스트 스위치
-- 시스템콜 엔트리 (`int 0x80` 또는 `sysenter`)
-- ELF 로더 (유저 프로그램 실행)
-- 간단한 파일시스템 (RAMFS → FAT / EXT2 read-only)
+### Phase 3. Linux Track (Processes / Syscalls / User mode)
+**Goal: A Linux-like minimal OS**
+- Paging and kernel address space design
+- Processes with isolated address spaces
+- Context switching
+- System call entry (`int 0x80` or `sysenter`)
+- ELF loader for user programs
+- Simple filesystem (RAMFS → FAT / EXT2 read-only)
 
 
 ## Project Structure
 
 ```text
 boot/
-  entry.asm                # 커널 엔트리, 스택 설정, C 진입
+  entry.asm                # Kernel entry, stack setup, transition to C
 
 arch/x86/
   cpu/
-    gdt.c, gdt.h           # GDT 구성 (Null / Code / Data)
-    gdt_flush.asm          # lgdt + 세그먼트 리로드
+    gdt.c, gdt.h           # Global Descriptor Table
+    gdt_flush.asm          # lgdt + segment reload
 
   interrupt/
-    idt.c, idt.h           # IDT 구성 및 로딩
-    isr.c, isr.h           # 예외/IRQ 디스패치
-    isr_stub.asm           # ASM ISR stub → C 핸들러 브리지
-    pic.c, pic.h           # PIC 리맵 및 EOI
-    pit.c, pit.h           # PIT 타이머 (IRQ0)
+    idt.c, idt.h           # Interrupt Descriptor Table
+    isr.c, isr.h           # Exception / IRQ dispatch
+    isr_stub.asm           # ASM ISR stubs → C handlers
+    pic.c, pic.h           # PIC remap and EOI
+    pit.c, pit.h           # PIT timer (IRQ0)
 
   io/
-    ports.h                # inb/outb/io_wait 공통 I/O
+    ports.h                # inb / outb / io_wait helpers
 
 drivers/
   serial/
-    serial.c, serial.h     # COM1 (0x3F8) 시리얼 디버그 출력
+    serial.c, serial.h     # COM1 (0x3F8) serial debug output
+  keyboard/
+    keyboard.c, keyboard.h # Keyboard IRQ (IRQ1)
 
 kernel/
   kernel.c                 # kernel_main()
-  vga.c, vga.h             # VGA 텍스트 출력
+  vga.c, vga.h             # VGA text-mode output
   panic/
-    panic.c, panic.h       # panic 루틴
+    panic.c, panic.h       # panic() implementation
+  lib/
+    itoa.c, itoa.h         # Integer → hex conversion utilities
 
-linker.ld                  # 링커 스크립트 (메모리 레이아웃)
-Makefile                   # 빌드 / ISO 생성 / QEMU 실행
+linker.ld                  # Linker script (memory layout)
+Makefile                   # Build / ISO / QEMU automation
 
 ```
 

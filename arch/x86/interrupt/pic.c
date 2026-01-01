@@ -10,6 +10,8 @@
 #define ICW1_ICW4    0x01
 #define ICW4_8086    0x01
 
+#define PIC_EOI      0x20
+
 static void pic_wait(void) { io_wait(); }
 
 void pic_remap(uint8_t offset1, uint8_t offset2) {
@@ -39,16 +41,18 @@ void pic_send_eoi(uint8_t irq) {
     outb(PIC1_COMMAND, 0x20);
 }
 
-void pic_set_mask(uint8_t irq) {
-    uint16_t port = (irq < 8) ? PIC1_DATA : PIC2_DATA;
-    if (irq >= 8) irq -= 8;
-    uint8_t value = inb(port) | (1 << irq);
+void pic_set_mask(uint8_t irq_line) {
+    uint16_t port = (irq_line < 8) ? PIC1_DATA : PIC2_DATA;
+    uint8_t line = (irq_line < 8) ? irq_line : (irq_line - 8);
+
+    uint8_t value = inb(port) | (1 << line);
     outb(port, value);
 }
 
-void pic_clear_mask(uint8_t irq) {
-    uint16_t port = (irq < 8) ? PIC1_DATA : PIC2_DATA;
-    if (irq >= 8) irq -= 8;
-    uint8_t value = inb(port) & ~(1 << irq);
+void pic_clear_mask(uint8_t irq_line) {
+    uint16_t port = (irq_line < 8) ? PIC1_DATA : PIC2_DATA;
+    uint8_t line = (irq_line < 8 ) ? irq_line : (irq_line - 8);
+
+    uint8_t value = inb(port) & ~(1 << line);
     outb(port, value);
 }

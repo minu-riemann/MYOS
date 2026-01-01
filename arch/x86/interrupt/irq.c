@@ -30,8 +30,12 @@ void irq_init(void) {
     pic_remap(0x20, 0x28);
 
     // 마스크: 타이머만 열고 나머지 닫기(안정화)
-    for (uint8_t i = 0; i < 16; i++) pic_set_mask(i);
+    for (uint8_t i = 0; i < 16; i++) pic_set_mask((uint8_t)i);
+
     pic_clear_mask(0); // IRQ0(timer) Enable
+    pic_clear_mask(1);
+
+    serial_write("[INFO] PIC remapped, IRQ0/IRQ1 unmasked\n");
 }
 
 // isr_handler에서 호출될 IRQ 공통 핸들러
@@ -39,8 +43,11 @@ void irq_dispatch(regs_t* r) {
     uint8_t irq = (uint8_t)(r->int_no - IRQ_BASE);
 
     if (irq < 16) {
-        irq_handler_t h = g_irq_handlers[irq];
-        if (h) h(r);
+       if (g_irq_handlers[irq]) {
+        g_irq_handlers[irq](r);
+       } else {
+        serial_write("[WARN] Unhandled IRQ\n");
+       }
     }
 
     pic_send_eoi(irq);

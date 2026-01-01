@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include "isr.h"
 
 typedef struct regs regs_t;
 

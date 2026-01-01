@@ -1,5 +1,6 @@
 #include "isr.h"
 #include "../../../drivers/serial/serial.h"
+#include "../../../kernel/lib/itoa.h" 
 #include "../../../kernel/vga.h"
 #include "../../../kernel/panic/panic.h"
 #include "irq.h"
@@ -30,16 +31,6 @@ static const char* exception_messages[32] = {
     "Reserved","Reserved","Reserved","Reserved","Reserved","Reserved","Reserved","Reserved","Reserved","Reserved"
 };
 
-static void u32_to_hex(uint32_t v, char out[11]) {
-    // "0x" + 8 hex digits + null terminator ('\0')
-    const char* h = "0123456789ABCDEF";
-    out[0] = '0';
-    out[1] = 'x';
-    for (int i =0; i < 8; i++) {
-        out[2 + i] = h[(v >> (28 - i*4)) & 0xF];
-    }
-    out[10] = '\0';
-}
 
 void isr_handler(regs_t* r) {
 

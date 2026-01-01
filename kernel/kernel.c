@@ -1,5 +1,8 @@
 #include "../drivers/serial/serial.h"
+#include "../drivers/keyboard/keyboard.h"
+
 #include "vga.h"
+
 #include "../kernel/panic/panic.h"
 
 #include "../arch/x86/cpu/gdt.h"
@@ -10,6 +13,8 @@
 
 void kernel_main(void) {
     vga_clear();
+    vga_puts_at(2, 2, "MyOS: IRQ/PIT/KBD OK");
+    vga_puts_at(4, 2, "Type on keyboard - see serial logs");
     serial_init();
     serial_write("[INFO] kernel_main entered\n");
 
@@ -23,6 +28,9 @@ void kernel_main(void) {
 
     serial_write("[INFO] init IRQ/PIC...\n");
     irq_init();
+
+    serial_write("[INFO] init keyboard...\n");
+    keyboard_init();
 
     serial_write("[INFO] init PIT...\n");
     pit_init(100); // 100Hz

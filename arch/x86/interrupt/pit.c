@@ -1,4 +1,4 @@
-#pragma once
+
 #include "../io/ports.h"
 
 #define PIT_CH0    0x40
