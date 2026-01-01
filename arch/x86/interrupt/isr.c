@@ -2,6 +2,7 @@
 #include "../../../drivers/serial/serial.h"
 #include "../../../kernel/vga.h"
 #include "../../../kernel/panic/panic.h"
+#include "irq.h"
 
 static const char* exception_messages[32] = {
     "Division By Zero (#DE)",
@@ -41,35 +42,49 @@ static void u32_to_hex(uint32_t v, char out[11]) {
 }
 
 void isr_handler(regs_t* r) {
-    const char* name = (r->int_no < 32)? exception_messages[r->int_no] : "Unknown Interrupt";
 
-    // VGA 출력
-    vga_clear();
-    vga_puts_at(2, 2, "EXCEPTION!");
-    vga_puts_at(4, 2, name);
+     if (r->int_no < 32) {
+        const char* name = exception_messages[r->int_no];
 
-    // Serial: 상세로그
-    serial_write("[EXC] ");
-    serial_write(name);
-    serial_write("\n");
+        // VGA 출력
+        vga_clear();
+        vga_puts_at(2, 2, "EXCEPTION!");
+        vga_puts_at(4, 2, name);
 
-    char buf[11];
+        // Serial: 상세로그
+        serial_write("[EXC] ");
+        serial_write(name);
+        serial_write("\n");
 
-    serial_write("  int_no=");
-    u32_to_hex(r->int_no, buf);  serial_write(buf);
-    serial_write("  err=");
-    u32_to_hex(r->err_code, buf);  serial_write(buf);
-    serial_write("\n");
+        char buf[11];
 
-    serial_write("  eip=");
-    u32_to_hex(r->eip, buf);  serial_write(buf);
-    serial_write("  cs=");
-    u32_to_hex(r->cs, buf);  serial_write(buf);
-    serial_write("  eflags=");
-    u32_to_hex(r->eflags, buf);  serial_write(buf);
-    serial_write("\n");
+        serial_write("  int_no=");
+        u32_to_hex(r->int_no, buf);  serial_write(buf);
+        serial_write("  err=");
+        u32_to_hex(r->err_code, buf);  serial_write(buf);
+        serial_write("\n");
 
-    // 최종적으로 panic으로 정지 (상태 통일)
-    panic("CPU exception trapped. System halted.");
+        serial_write("  eip=");
+        u32_to_hex(r->eip, buf);  serial_write(buf);
+        serial_write("  cs=");
+        u32_to_hex(r->cs, buf);  serial_write(buf);
+        serial_write("  eflags=");
+        u32_to_hex(r->eflags, buf);  serial_write(buf);
+        serial_write("\n");
+
+        // 최종적으로 panic으로 정지 (상태 통일)
+        panic("CPU exception trapped. System halted.");
+     } else if (r->int_no >= 32 && r->int_no < 48) {
+        // IRQ 처리
+        irq_dispatch(r);
+        return;
+     } else {
+        // 알 수 없는 인터럽트
+        serial_write("[WARN] Unknown interrupt received: ");
+        char buf[11];
+        u32_to_hex(r->int_no, buf);
+        serial_write(buf);
+        serial_write("\n");
+     }
 
 }

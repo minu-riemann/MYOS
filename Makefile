@@ -23,7 +23,10 @@ OBJS := \
   $(OBJ_DIR)/gdt_flush.o \
   $(OBJ_DIR)/idt.o \
   $(OBJ_DIR)/isr.o \
-  $(OBJ_DIR)/isr_stub.o
+  $(OBJ_DIR)/isr_stub.o \
+ $(OBJ_DIR)/pic.o \
+  $(OBJ_DIR)/pit.o \
+  $(OBJ_DIR)/irq.o \
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
@@ -59,6 +62,16 @@ $(OBJ_DIR)/idt.o: arch/x86/interrupt/idt.c arch/x86/interrupt/idt.h | $(OBJ_DIR)
 
 $(OBJ_DIR)/isr.o: arch/x86/interrupt/isr.c arch/x86/interrupt/isr.h | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/pic.o: arch/x86/interrupt/pic.c arch/x86/interrupt/pic.h | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/pit.o: arch/x86/interrupt/pit.c arch/x86/interrupt/pit.h | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/irq.o: arch/x86/interrupt/irq.c arch/x86/interrupt/irq.h | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 
 $(OBJ_DIR)/isr_stub.o: arch/x86/interrupt/isr_stub.asm | $(OBJ_DIR)
 	$(NASM) -f elf32 $< -o $@

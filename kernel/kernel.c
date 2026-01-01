@@ -4,10 +4,9 @@
 
 #include "../arch/x86/cpu/gdt.h"
 #include "../arch/x86/interrupt/idt.h"
+#include "../arch/x86/interrupt/irq.h"
+#include "../arch/x86/interrupt/pit.h"
 
-static void trigger_ud2(void) {
-    __asm__ __volatile__("ud2");
-}
 
 void kernel_main(void) {
     vga_clear();
@@ -22,8 +21,15 @@ void kernel_main(void) {
     idt_init();
     serial_write("[INFO] IDT loaded\n");
 
-    serial_write("[TEST] trigger #UD (ud2)\n");
-    trigger_ud2();
+    serial_write("[INFO] init IRQ/PIC...\n");
+    irq_init();
 
-    panic("Returned after exception (unexpected).");
+    serial_write("[INFO] init PIT...\n");
+    pit_init(100); // 100Hz
+
+    serial_write("[INFO] sti\n");
+    __asm__ volatile ("sti");
+
+    for (;;)
+        __asm__ volatile ("hlt");
 }

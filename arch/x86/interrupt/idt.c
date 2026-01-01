@@ -55,6 +55,23 @@ extern void isr27(void);
 extern void isr28(void);
 extern void isr29(void);
 extern void isr30(void);
+extern void isr31(void);
+extern void isr32(void);
+extern void isr33(void);
+extern void isr34(void);
+extern void isr35(void);
+extern void isr36(void);
+extern void isr37(void);
+extern void isr38(void);
+extern void isr39(void);
+extern void isr40(void);
+extern void isr41(void);
+extern void isr42(void);
+extern void isr43(void);
+extern void isr44(void);
+extern void isr45(void);
+extern void isr46(void);
+extern void isr47(void);
 
 void idt_init(void) {
     idt_ptr.limit = (uint16_t)(sizeof(idt_entry_t)*256 -1);
@@ -105,10 +122,27 @@ void idt_init(void) {
     idt_set_gate(28, (uint32_t)isr28, KERNEL_CS, FLAGS_INTGATE);
     idt_set_gate(29, (uint32_t)isr29, KERNEL_CS, FLAGS_INTGATE);
     idt_set_gate(30, (uint32_t)isr30, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(31, (uint32_t)isr31, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(32, (uint32_t)isr32, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(33, (uint32_t)isr33, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(34, (uint32_t)isr34, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(35, (uint32_t)isr35, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(36, (uint32_t)isr36, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(37, (uint32_t)isr37, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(38, (uint32_t)isr38, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(39, (uint32_t)isr39, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(40, (uint32_t)isr40, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(41, (uint32_t)isr41, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(42, (uint32_t)isr42, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(43, (uint32_t)isr43, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(44, (uint32_t)isr44, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(45, (uint32_t)isr45, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(46, (uint32_t)isr46, KERNEL_CS, FLAGS_INTGATE);
+    idt_set_gate(47, (uint32_t)isr47, KERNEL_CS, FLAGS_INTGATE);
 
 
     // Load the IDT
-    __asm__ __volatile__("lidtl (%0)" : : "r" (&idt_ptr));
+    __asm__ __volatile__("lidt (%0)" : : "r" (&idt_ptr));
 
 }
 

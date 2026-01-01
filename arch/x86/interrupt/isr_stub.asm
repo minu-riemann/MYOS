@@ -32,6 +32,23 @@ global isr28
 global isr29
 global isr30
 global isr31
+; Add for IRQs (32-47) - hardware interrupts
+global isr32
+global isr33
+global isr34
+global isr35
+global isr36
+global isr37
+global isr38
+global isr39
+global isr40
+global isr41
+global isr42
+global isr43
+global isr44
+global isr45
+global isr46
+global isr47
 
 extern isr_handler
 
@@ -81,7 +98,6 @@ isr_common_stub:
 
     popa
     add esp, 8     ; pop int_no + err_code (또는 int_no + err_code 형태로 정렬)
-    sti
     iretd
 
 ; Intel-defined exceptions with error code:
@@ -119,5 +135,11 @@ ISR_NOERR 29
 ISR_NOERR 30
 ISR_NOERR 31
 
+%assign i 32
+%rep 16
+ISR_NOERR i
+%assign i i+1
+%endrep
 
-section .note.GNU-stack
+
+section .note.GNU-stack noalloc noexec nowrite progbits
