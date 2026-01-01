@@ -4,6 +4,8 @@ SECTIONS
 {
   . = 1M;
 
+  __kernel_start = .;
+
   .text :
   {
     *(.multiboot)
@@ -12,5 +14,12 @@ SECTIONS
 
   .rodata : { *(.rodata*) }
   .data   : { *(.data*) }
-  .bss    : { *(.bss*) *(COMMON) }
+
+  .bss :
+  {
+    *(.bss*)
+    *(COMMON)
+  }
+
+  __kernel_end = .;
 }
