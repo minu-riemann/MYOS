@@ -22,13 +22,16 @@ implementation of CPU setup, interrupt handling, and hardware timers
 - [x] Page Fault (#PF) handler (CR2 + error code logging)
 - [x] Multiboot memory map parsing
 - [x] Kernel memory layout detection
+- [x] Kernel heap allocator (bump allocator)
+- [x] kmalloc/kmalloc_aligned implementation
 
 **Verified behavior**
 - `ud2` triggers **#UD (Invalid Opcode)**  
   → ISR prints CPU context and halts via `panic()`
 - PIT IRQ0 generates periodic ticks  
   → `[TICK] 100 ticks` after `sti`
-
+- Heap allocator initializes from Multiboot memory map
+  → `kmalloc()` returns aligned addresses, OOM detection works
 
 ## Development Roadmap
 
@@ -90,6 +93,7 @@ kernel/
   vga.c, vga.h             # VGA text-mode output
   memory/
     multiboot.c, multiboot.h  # Multiboot info parsing, memory map
+    heap.c, heap.h           # Kernel heap allocator (bump allocator)
   panic/
     panic.c, panic.h       # panic() implementation
   lib/
@@ -156,6 +160,15 @@ CPU는 IDT를 참조하여 해당 예외를 처리할 핸들러로 제어를 이
 + 사용 가능한 메모리 영역과 예약된 영역을 식별
 + 가장 큰 사용 가능한 메모리 영역을 찾아 힙 할당 준비
 + 커널 끝 주소(`__kernel_end`)를 기준으로 힙 영역 설정 가능
+
+### Kernel Heap Allocator
++ Bump allocator 방식의 간단한 커널 힙 할당자 구현
++ Multiboot 메모리 맵에서 가장 큰 사용 가능한 영역을 찾아 힙으로 사용
++ 커널 이미지 끝(`__kernel_end`) 이후부터 힙 영역 시작
++ `kmalloc(size)`: 16바이트 정렬 기본 할당
++ `kmalloc_aligned(size, align)`: 사용자 지정 정렬 할당
++ 메모리 부족 시 OOM(Out Of Memory) 감지 및 패닉
++ Phase 1에서는 단순한 bump allocator로, Phase 2에서 free() 지원 예정
 
 ## Build & Run
 ### Requirements (WSL/Ubuntu)

@@ -3,15 +3,21 @@
 
 #include "vga.h"
 
-#include "../kernel/panic/panic.h"
-
 #include "../arch/x86/cpu/gdt.h"
 #include "../arch/x86/interrupt/idt.h"
 #include "../arch/x86/interrupt/irq.h"
 #include "../arch/x86/interrupt/pit.h"
+
+#include "panic/panic.h"
 #include "memory/multiboot.h"
+#include "memory/heap.h"
 
 extern uint32_t __kernel_end;
+
+static inline uint32_t align_up(uint32_t v, uint32_t a) {
+    uint32_t m = a - 1;
+    return (v + m) & ~m;
+}
 
 void kernel_main(uint32_t magic, uint32_t mb_addr) {
     vga_clear();
@@ -38,11 +44,24 @@ void kernel_main(uint32_t magic, uint32_t mb_addr) {
 
     uint32_t base=0, end=0;
     if (multiboot_find_largest_usable(mb_addr, &base, &end)) {
-        serial_write("[MEM] largest usable: base=");
-        u32_to_hex(base, buf); serial_write(buf);
-        serial_write(" end=");
-        u32_to_hex(end, buf); serial_write(buf);
-        serial_write("\n");
+        // 힙 시작은 커널 이미지 끝 이후
+        uint32_t heap_start = align_up((uint32_t)&__kernel_end, 16);
+
+        // 안전장치: usable base보다 낮으면 올려줌
+        if (heap_start < base) heap_start = base;
+
+        heap_init(heap_start, end);
+
+        // 테스트: 여러 번 할당해보고 주소 증가 확인
+        void* a = kmalloc(16);
+        void* b = kmalloc(256);
+        void* c = kmalloc_aligned(64, 64);
+
+        char buf[11];
+        serial_write("[HEAP] test alloc\n");
+        serial_write("  a="); u32_to_hex((uint32_t)a, buf); serial_write(buf); serial_write("\n");
+        serial_write("  b="); u32_to_hex((uint32_t)b, buf); serial_write(buf); serial_write("\n");
+        serial_write("  c="); u32_to_hex((uint32_t)c, buf); serial_write(buf); serial_write("\n");
     } else {
         serial_write("[MEM] no usable region found\n");
     }

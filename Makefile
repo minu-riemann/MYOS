@@ -23,6 +23,7 @@ C_SRCS := \
   kernel/kernel.c \
   kernel/vga.c \
   kernel/memory/multiboot.c \
+  kernel/memory/heap.c \
   kernel/panic/panic.c \
   drivers/serial/serial.c \
   drivers/keyboard/keyboard.c \
