@@ -18,6 +18,8 @@ implementation of CPU setup, interrupt handling, and hardware timers
 - [x] IDT + CPU exception handling
 - [x] PIC remap + IRQ handling
 - [x] PIT timer interrupt (tick verified)
+- [x] Paging enabled (minimal identity mapping)
+- [x] Page Fault (#PF) handler (CR2 + error code logging)
 
 **Verified behavior**
 - `ud2` triggers **#UD (Invalid Opcode)**  
@@ -139,6 +141,11 @@ CPU는 IDT를 참조하여 해당 예외를 처리할 핸들러로 제어를 이
     +Serial(COM1)을 이용한 로그 출력
     +치명적 오류 발생 시 panic()을 통한 시스템 정지
 + 를 구현하여,QEMU 환경에서 커널 내부 상태를 관찰할 수 있도록 구성하였다.
+
+### #PF(Page Fault)
++ 페이징 변환/권한 위반 시 발생
++ CR2: fault가 난 선형주소(linear address) 저장 레지스터
++ err_code: not-present / write / user / reserved-bit / instruction-fetch 등의 원인 비트
 
 ## Build & Run
 ### Requirements (WSL/Ubuntu)

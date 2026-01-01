@@ -10,6 +10,10 @@
 #include "../arch/x86/interrupt/irq.h"
 #include "../arch/x86/interrupt/pit.h"
 
+static void trigger_pf_null(void) {
+    volatile uint32_t *p = (uint32_t*)0x0;
+    *p = 0xDEADBEEF;
+}
 
 void kernel_main(void) {
     vga_clear();
@@ -37,6 +41,8 @@ void kernel_main(void) {
 
     serial_write("[INFO] sti\n");
     __asm__ volatile ("sti");
+
+    trigger_pf_null();
 
     for (;;)
         __asm__ volatile ("hlt");
