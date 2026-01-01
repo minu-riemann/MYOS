@@ -42,7 +42,10 @@ void kernel_main(void) {
     serial_write("[INFO] sti\n");
     __asm__ volatile ("sti");
 
-    trigger_pf_null();
+    
+
+    volatile uint32_t* p = (uint32_t*)0x0;
+    *p = 0xDEADBEEF;
 
     for (;;)
         __asm__ volatile ("hlt");
