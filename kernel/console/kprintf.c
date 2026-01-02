@@ -9,9 +9,24 @@
 // -------------------------
 // Minimal VGA console backend
 // -------------------------
-static uint16_t* const VGA_MEM = (uint16_t*)0xB8000;
-static const int VGA_W = 80;
-static const int VGA_H = 25;
+// 아키텍처별 VGA 메모리 주소
+#ifdef ARCH_X86
+#define VGA_MEM_BASE 0xB8000
+#elif defined(ARCH_ARM)
+#define VGA_MEM_BASE 0  // ARM은 VGA 없음, UART/LCD만
+#else
+#define VGA_MEM_BASE 0xB8000  // 기본값 (x86)
+#endif
+
+// VGA 메모리 포인터 (x86에서만 사용)
+#if VGA_MEM_BASE != 0
+static uint16_t* const VGA_MEM = (uint16_t*)VGA_MEM_BASE;
+#else
+static uint16_t* const VGA_MEM = NULL;  // ARM에서는 NULL
+#endif
+
+static const int VGA_W = 80;   // 추가: VGA 너비
+static const int VGA_H = 25;   // 추가: VGA 높이
 
 static int cur_x = 0;
 static int cur_y = 0;
@@ -28,48 +43,57 @@ static void unlock(void) {
 }
 
 static void vga_scroll_if_needed(void) {
-    if (cur_y < VGA_H) return;
-
-    // scroll up by one line
-    for (int y = 1; y < VGA_H; y++) {
-        for (int x = 0; x < VGA_W; x++) {
-            VGA_MEM[(y - 1) * VGA_W + x] = VGA_MEM[y * VGA_W + x];
+    #if VGA_MEM_BASE != 0
+        if (cur_y < VGA_H) return;
+    
+        // scroll up by one line
+        for (int y = 1; y < VGA_H; y++) {
+            for (int x = 0; x < VGA_W; x++) {
+                VGA_MEM[(y - 1) * VGA_W + x] = VGA_MEM[y * VGA_W + x];
+            }
         }
+    
+        // clear last line
+        for (int x = 0; x < VGA_W; x++) {
+            VGA_MEM[(VGA_H - 1) * VGA_W + x] = ((uint16_t)vga_attr << 8) | ' ';
+        }
+    
+        cur_y = VGA_H - 1;
+    #endif
     }
-
-    // clear last line
-    for (int x = 0; x < VGA_W; x++) {
-        VGA_MEM[(VGA_H - 1) * VGA_W + x] = ((uint16_t)vga_attr << 8) | ' ';
-    }
-
-    cur_y = VGA_H - 1;
-}
 
 static void vga_putc_console(char c) {
+#if VGA_MEM_BASE != 0
     if (c == '\n') {
         cur_x = 0;
         cur_y++;
         vga_scroll_if_needed();
         return;
     }
+
     if (c == '\r') {
         cur_x = 0;
         return;
     }
-    if ( c == '\t') {
-        int next = (cur_x + 4) & ~3;
-        while (cur_x < next) vga_putc_console(' ');
+
+    if (c == '\t') {
+        cur_x = (cur_x + 8) & ~7;
+        if (cur_x >= VGA_W) {
+            cur_x = 0;
+            cur_y++;
+            vga_scroll_if_needed();
+        }
         return;
     }
 
     VGA_MEM[cur_y * VGA_W + cur_x] = ((uint16_t)vga_attr << 8) | (uint8_t)c;
     cur_x++;
-
     if (cur_x >= VGA_W) {
         cur_x = 0;
         cur_y++;
         vga_scroll_if_needed();
     }
+#endif  // VGA_MEM_BASE != 0
 }
 
 // Unified output: VGA + Serial
@@ -187,6 +211,7 @@ void kprintf_set_cursor(int x, int y) {
 }
 
 void kprintf_clear_console(void) {
+#if VGA_MEM_BASE != 0
     for (int y = 0; y < VGA_H; y++) {
         for (int x = 0; x < VGA_W; x++) {
             VGA_MEM[y * VGA_W + x] = ((uint16_t)vga_attr << 8) | ' ';
@@ -194,20 +219,25 @@ void kprintf_clear_console(void) {
     }
     cur_x = 0;
     cur_y = 0;
+#endif
 }
 
-void kprintf_puts_at(int row, int col, const char* s) {
-    // 커서 위치 저장
+void kprintf_puts_at(int y, int x, const char* s) {
+#if VGA_MEM_BASE != 0
+    if (y < 0 || y >= VGA_H || x < 0 || x >= VGA_W || !s) return;
+    
     int old_x = cur_x;
     int old_y = cur_y;
+    cur_x = x;
+    cur_y = y;
     
-    // 새 위치 설정
-    kprintf_set_cursor(col, row);
+    while (*s && cur_x < VGA_W) {
+        VGA_MEM[cur_y * VGA_W + cur_x] = ((uint16_t)vga_attr << 8) | (uint8_t)(*s);
+        cur_x++;
+        s++;
+    }
     
-    // 문자열 출력
-    kout_str(s);
-    
-    // 원래 커서 위치 복원 (선택적, 필요하면 주석 처리)
-    // cur_x = old_x;
-    // cur_y = old_y;
+    cur_x = old_x;
+    cur_y = old_y;
+#endif
 }

@@ -7,18 +7,50 @@ ISO_DIR   := $(BUILD_DIR)/iso
 KERNEL_BIN := $(BUILD_DIR)/$(TARGET).bin
 KERNEL_ISO := $(BUILD_DIR)/$(TARGET).iso
 
-CC   := gcc
-LD   := ld
-NASM := nasm
+# ============================================================
+# 아키텍처 선택
+# ============================================================
+ARCH ?= x86
 
-CFLAGS  := -m32 -ffreestanding -O2 -Wall -Wextra \
-           -fno-pic -fno-stack-protector -nostdlib -fno-builtin -g
-LDFLAGS := -m elf_i386 -T linker.ld
+ifeq ($(ARCH),x86)
+    CC   := gcc
+    LD   := ld
+    AS   := nasm
+    
+    CFLAGS  := -m32 -ffreestanding -O2 -Wall -Wextra \
+               -fno-pic -fno-stack-protector -nostdlib -fno-builtin -g -I include
+    ASFLAGS := -f elf32
+    LDFLAGS := -m elf_i386 -T linker/x86.ld
+    
+    ARCH_DIR := arch/x86
+    BOOT_SRC := boot/x86/entry.asm
+    DEFINES := -DARCH_X86
+    
+else ifeq ($(ARCH),arm)
+    CC   := arm-none-eabi-gcc
+    LD   := arm-none-eabi-ld
+    AS   := arm-none-eabi-as
+    
+    CFLAGS  := -mcpu=cortex-a9 -ffreestanding -O2 -Wall -Wextra \
+               -fno-pic -fno-stack-protector -nostdlib -fno-builtin -g -I include
+    ASFLAGS := -mcpu=cortex-a9
+    LDFLAGS := -T linker/arm.ld
+    
+    ARCH_DIR := arch/arm
+    BOOT_SRC := boot/arm/entry.S
+    DEFINES := -DARCH_ARM
+    
+else
+    $(error Unknown ARCH: $(ARCH). Use ARCH=x86 or ARCH=arm)
+endif
+
+CFLAGS += $(DEFINES)
 
 # ============================================================
-# Source files (여기에 새 파일 추가하면 자동 빌드에 포함됨)
+# Source files
 # ============================================================
-C_SRCS := \
+# 공통 커널 소스 (아키텍처 독립적)
+COMMON_SRCS := \
   kernel/lib/itoa.c \
   kernel/kernel.c \
   kernel/memory/multiboot.c \
@@ -27,25 +59,30 @@ C_SRCS := \
   kernel/console/kprintf.c \
   kernel/time/time.c \
   drivers/serial/serial.c \
-  drivers/keyboard/keyboard.c \
-  arch/x86/cpu/gdt.c \
-  arch/x86/interrupt/idt.c \
-  arch/x86/interrupt/isr.c \
-  arch/x86/interrupt/pic.c \
-  arch/x86/interrupt/irq.c \
-  arch/x86/interrupt/pit.c
+  drivers/keyboard/keyboard.c
 
-ASM_SRCS := \
-  boot/entry.asm \
-  arch/x86/cpu/gdt_flush.asm \
-  arch/x86/interrupt/isr_stub.asm
+# 아키텍처별 소스 (자동 수집)
+ARCH_SRCS := $(wildcard $(ARCH_DIR)/**/*.c)
+
+# 모든 C 소스
+C_SRCS := $(COMMON_SRCS) $(ARCH_SRCS)
+
+# 아키텍처별 어셈블리 소스
+ifeq ($(ARCH),x86)
+    ASM_SRCS := \
+      boot/x86/entry.asm \
+      $(wildcard $(ARCH_DIR)/**/*.asm)
+else ifeq ($(ARCH),arm)
+    ASM_SRCS := \
+      boot/arm/entry.S \
+      $(wildcard $(ARCH_DIR)/**/*.S)
+endif
 
 # ============================================================
-# Objects (obj/ 아래에 원본 경로를 그대로 미러링)
-# 예) kernel/kernel.c -> build/obj/kernel/kernel.o
+# Objects
 # ============================================================
 C_OBJS   := $(patsubst %.c,$(OBJ_DIR)/%.o,$(C_SRCS))
-ASM_OBJS := $(patsubst %.asm,$(OBJ_DIR)/%.o,$(ASM_SRCS))
+ASM_OBJS := $(patsubst %.asm,$(OBJ_DIR)/%.o,$(patsubst %.S,$(OBJ_DIR)/%.o,$(ASM_SRCS)))
 OBJS     := $(C_OBJS) $(ASM_OBJS)
 
 # ============================================================
@@ -56,8 +93,6 @@ $(BUILD_DIR):
 
 $(ISO_DIR):
 	mkdir -p $(ISO_DIR)/boot/grub
-
-# obj 디렉토리는 파일별로 자동 생성 (rule에서 mkdir -p $(dir $@))
 
 # ============================================================
 # Top-level
@@ -73,18 +108,27 @@ $(OBJ_DIR)/%.o: %.c
 
 $(OBJ_DIR)/%.o: %.asm
 	mkdir -p $(dir $@)
-	$(NASM) -f elf32 $< -o $@
+	$(AS) $(ASFLAGS) $< -o $@
+
+$(OBJ_DIR)/%.o: %.S
+	mkdir -p $(dir $@)
+	$(AS) $(ASFLAGS) $< -o $@
 
 # ============================================================
 # Link
 # ============================================================
-$(KERNEL_BIN): $(OBJS) linker.ld | $(BUILD_DIR)
+$(KERNEL_BIN): $(OBJS) | $(BUILD_DIR)
+ifeq ($(ARCH),x86)
 	$(LD) $(LDFLAGS) -o $@ $(OBJS)
+else ifeq ($(ARCH),arm)
+	$(LD) $(LDFLAGS) -o $@ $(OBJS)
+endif
 
 # ============================================================
-# ISO
+# ISO (x86 전용)
 # ============================================================
 $(KERNEL_ISO): $(KERNEL_BIN) | $(ISO_DIR)
+ifeq ($(ARCH),x86)
 	cp $(KERNEL_BIN) $(ISO_DIR)/boot/kernel.bin
 
 	echo 'set timeout=0'                 >  $(ISO_DIR)/boot/grub/grub.cfg
@@ -95,15 +139,27 @@ $(KERNEL_ISO): $(KERNEL_BIN) | $(ISO_DIR)
 	echo '}'                             >> $(ISO_DIR)/boot/grub/grub.cfg
 
 	grub-mkrescue -o $@ $(ISO_DIR)
+else
+	@echo "ISO generation is only supported for x86"
+	@false
+endif
 
 # ============================================================
 # Run / Debug
 # ============================================================
+ifeq ($(ARCH),x86)
 run: $(KERNEL_ISO)
-	qemu-system-i386 -cdrom $< -no-reboot -serial stdio -d int,guest_errors -D $(BUILD_DIR)/qemu.log
+	qemu-system-i386 -cdrom $(KERNEL_ISO) -no-reboot -serial stdio -d int,guest_errors -D $(BUILD_DIR)/qemu.log
 
 debug: $(KERNEL_ISO)
-	qemu-system-i386 -cdrom $< -serial stdio -no-reboot -s -S -d int,guest_errors -D $(BUILD_DIR)/qemu.log
+	qemu-system-i386 -cdrom $(KERNEL_ISO) -serial stdio -no-reboot -s -S -d int,guest_errors -D $(BUILD_DIR)/qemu.log
+else ifeq ($(ARCH),arm)
+run: $(KERNEL_BIN)
+	qemu-system-arm -M versatilepb -m 128M -kernel $(KERNEL_BIN) -serial stdio -nographic -no-reboot
+
+debug: $(KERNEL_BIN)
+	qemu-system-arm -M versatilepb -m 128M -kernel $(KERNEL_BIN) -serial stdio -nographic -no-reboot -s -S
+endif
 
 clean:
 	rm -rf $(BUILD_DIR)

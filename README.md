@@ -1,12 +1,12 @@
 # MYOS
 
-A small educational x86 (i386) OS kernel built from scratch.
+A small educational OS kernel built from scratch, supporting **x86 (i386)** and **ARM** architectures.
 
-Boots via **GRUB (Multiboot)**, runs on **QEMU**, and provides a **debuggable kernel platform**
+Boots via **GRUB (Multiboot)** on x86, runs on **QEMU**, and provides a **debuggable kernel platform**
 designed as a foundation for both **RTOS-style kernels** and **Linux-like operating systems**.
 
 This project focuses on understanding low-level OS fundamentals through hands-on
-implementation of CPU setup, interrupt handling, and hardware timers
+implementation of CPU setup, interrupt handling, and hardware timers.
 
 ## Current Status
 
@@ -29,6 +29,13 @@ implementation of CPU setup, interrupt handling, and hardware timers
 - [x] Error display system (panic/exceptions via kprintf_puts_at)
 - [x] Time management (PIT-based tick counter)
 - [x] sleep(ms) implementation (busy-wait)
+- [x] **Phase 1.5: 멀티 아키텍처 추상화 완료**
+  - [x] 추상화 레이어 구축 (`include/arch/`)
+  - [x] x86 구현 마이그레이션
+  - [x] 커널 코드 추상화 레이어 사용
+  - [x] 드라이버 추상화
+  - [x] 멀티 아키텍처 빌드 시스템 (`make ARCH=x86|arm`)
+  - [x] ARM 스텁 구현
 
 **Verified behavior**
 - `ud2` triggers **#UD (Invalid Opcode)**  
@@ -43,6 +50,8 @@ implementation of CPU setup, interrupt handling, and hardware timers
   → Critical errors visible on VGA, detailed logs via kprintf
 - sleep(ms) works with PIT tick counter
   → Time-based delays functional for driver/application use
+- **멀티 아키텍처 빌드 지원**
+  → `make ARCH=x86` 및 `make ARCH=arm` 빌드 성공
 
 ## Development Roadmap
 
@@ -56,6 +65,15 @@ implementation of CPU setup, interrupt handling, and hardware timers
 - [x] sleep(ms) implementation
 - [x] Unified logging system (kprintf)
 - [x] Memory management (heap allocator)
+
+### Phase 1.5. 멀티 아키텍처 추상화 ✅ COMPLETE
+**Goal: x86과 ARM을 동시에 지원하는 추상화 레이어 구축**
+- [x] 추상화 인터페이스 설계 (`include/arch/`)
+- [x] x86 구현 마이그레이션 (`arch/x86/cpu/`, `arch/x86/interrupt/`, etc.)
+- [x] 커널 코드 추상화 레이어 사용
+- [x] 드라이버 추상화 (하드웨어 주소 매크로화)
+- [x] 멀티 아키텍처 빌드 시스템 (`make ARCH=x86|arm`)
+- [x] ARM 스텁 구현 (`arch/arm/`)
 
 ### Phase 2. RTOS Track (MCU / Automotive / Embedded)
 **Goal: Implement a FreeRTOS-class kernel**
@@ -78,50 +96,85 @@ implementation of CPU setup, interrupt handling, and hardware timers
 ## Project Structure
 
 ```text
+include/
+  arch/                      # 아키텍처 추상화 인터페이스
+    cpu.h
+    interrupt.h
+    timer.h
+    io.h
+    boot.h
+
 boot/
-  entry.asm                # Kernel entry, stack setup, transition to C
+  x86/
+    entry.asm                # x86 Multiboot 엔트리
+  arm/
+    entry.S                  # ARM 엔트리
 
-arch/x86/
-  cpu/
-    gdt.c, gdt.h           # Global Descriptor Table
-    gdt_flush.asm          # lgdt + segment reload
-
-  interrupt/
-    idt.c, idt.h           # Interrupt Descriptor Table
-    isr.c, isr.h           # Exception / IRQ dispatch
-    isr_stub.asm           # ASM ISR stubs → C handlers
-    pic.c, pic.h           # PIC remap and EOI
-    pit.c, pit.h           # PIT timer (IRQ0)
-
-  io/
-    ports.h                # inb / outb / io_wait helpers
+arch/
+  x86/
+    cpu/                     # GDT, CR 레지스터
+      gdt.c, gdt.h
+      gdt_flush.asm
+      cpu.c, cpu.h           # CPU 추상화 구현
+      cr.c, cr.h             # Control Register 접근
+    interrupt/               # IDT, PIC, PIT, ISR
+      idt.c, idt.h
+      isr.c, isr.h
+      isr_stub.asm
+      pic.c, pic.h
+      pit.c, pit.h
+      irq.c, irq.h
+      interrupt.c            # Interrupt 추상화 구현
+    timer/                   # PIT 추상화
+      timer.c
+    io/                      # 포트 I/O 추상화
+      ports.h
+      io.c
+  arm/
+    cpu/                     # ARM CPU 초기화 (스텁)
+      cpu.c
+    interrupt/               # ARM 인터럽트 (스텁)
+      interrupt.c
+    timer/                    # ARM 타이머 (스텁)
+      timer.c
+    io/                      # MMIO 추상화
+      io.c
 
 drivers/
-  serial/
-    serial.c, serial.h     # COM1 (0x3F8) serial debug output
-  keyboard/
-    keyboard.c, keyboard.h # Keyboard IRQ (IRQ1)
+  serial/                   # 시리얼 드라이버 (아키텍처별 주소)
+    serial.c, serial.h
+  keyboard/                 # 키보드 드라이버
+    keyboard.c, keyboard.h
 
 kernel/
-  kernel.c                 # kernel_main()
-  console/
-    kprintf.c, kprintf.h   # Formatted output (VGA + Serial)
-  time/
-    time.c, time.h         # Time management, sleep(ms)
-  memory/
-    multiboot.c, multiboot.h  # Multiboot info parsing, memory map
-    heap.c, heap.h           # Kernel heap allocator (bump allocator)
-  panic/
-    panic.c, panic.h       # panic() implementation
-  lib/
-    itoa.c, itoa.h         # Integer → hex conversion utilities
+  kernel.c                   # kernel_main() (아키텍처 독립적)
+  console/                   # kprintf (VGA + Serial)
+    kprintf.c, kprintf.h
+  time/                      # Time management
+    time.c, time.h
+  memory/                    # Multiboot, Heap
+    multiboot.c, multiboot.h
+    heap.c, heap.h
+  panic/                     # panic() 구현
+    panic.c, panic.h
+  lib/                       # 유틸리티
+    itoa.c, itoa.h
 
-linker.ld                  # Linker script (memory layout)
-Makefile                   # Build / ISO / QEMU automation
+linker/
+  x86.ld                     # x86 링커 스크립트
+  arm.ld                     # ARM 링커 스크립트
 
+Makefile                     # 멀티 아키텍처 빌드 시스템
 ```
 
 ## Theory Desc
+
+### 멀티 아키텍처 추상화
++ 아키텍처별 차이를 추상화 레이어로 분리
++ 커널 코드는 `include/arch/` 인터페이스만 사용
++ 각 아키텍처는 `arch/x86/`, `arch/arm/`에서 구현 제공
++ 빌드 시스템에서 `ARCH=x86|arm` 선택 가능
++ 실물 하드웨어 포팅 시 플랫폼 레이어 추가 예정
 
 ### GRUB = Boot loader
 + GRUB는 BIOS 이후 단계에서 실행되는 부트로더
@@ -205,34 +258,71 @@ CPU는 IDT를 참조하여 해당 예외를 처리할 핸들러로 제어를 이
 + hlt 명령으로 CPU 전력 소비 최소화
 
 ## Build & Run
+
 ### Requirements (WSL/Ubuntu)
-+ gcc (i386 freestanding build)
-+ nasm
-+ grub-mkrescue
-+ qemu-system-i386
+- gcc (i386 freestanding build)
+- nasm (x86 어셈블리)
+- grub-mkrescue (x86 ISO 생성)
+- qemu-system-i386 (x86 에뮬레이션)
+- qemu-system-arm (ARM 에뮬레이션, 선택)
+- arm-none-eabi-gcc (ARM 빌드, 선택)
 
 ### Install (Ubuntu):
-```
+```bash
+# 기본 도구
 sudo apt update
 sudo apt install -y build-essential gcc-multilib nasm grub-pc-bin xorriso qemu-system-x86
+
+# ARM 빌드 도구 (선택)
+sudo apt install -y gcc-arm-none-eabi binutils-arm-none-eabi qemu-system-arm
 ```
 
-### Build ISO
+### Build
+
+**x86 빌드:**
+```bash
+make ARCH=x86
+# 또는
+make  # 기본값은 x86
 ```
-make
+
+**ARM 빌드:**
+```bash
+make ARCH=arm
 ```
 
 ### Run on QEMU
-```
-make run
+
+**x86 실행:**
+```bash
+make ARCH=x86 run
 ```
 
-### Run with logs / debugging options
-+ Serial output is routed to host console via QEMU -serial stdio.
-+ For GDB:
-    + Start QEMU paused: add -s -S options.
-    + Connect: gdb build/myos.bin then target remote :1234
+**ARM 실행:**
+```bash
+make ARCH=arm run
+```
+
+### Debug
+
+**x86 디버깅:**
+```bash
+make ARCH=x86 debug
+# 다른 터미널에서
+gdb build/myos.bin
+(gdb) target remote :1234
+```
+
+**ARM 디버깅:**
+```bash
+make ARCH=arm debug
+# 다른 터미널에서
+arm-none-eabi-gdb build/myos.bin
+(gdb) target remote :1234
+```
 
 ### Notes
-+ This project targets 32-bit protected mode (i386).
-+ The kernel is built as a freestanding binary and packaged into a bootable ISO via GRUB.
+- x86: 32-bit protected mode (i386), Multiboot 부팅
+- ARM: Cortex-A9 (스텁 구현), 향후 확장 예정
+- 커널은 freestanding 환경에서 빌드됨
+- x86은 GRUB을 통해 ISO로 부팅, ARM은 직접 커널 로드

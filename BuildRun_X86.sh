@@ -15,7 +15,7 @@ echo "Clean completed."
 echo ""
 
 echo "[2/3] Building kernel..."
-make
+make ARCH=x86
 if [ $? -ne 0 ]; then
     echo "ERROR: Build failed!"
     exit 1
@@ -26,7 +26,7 @@ echo ""
 echo "[3/3] Running QEMU..."
 echo "Press Ctrl+C to stop QEMU"
 echo ""
-make run
+make ARCH=x86 run 
 if [ $? -ne 0 ]; then
     echo "ERROR: Run failed!"
     exit 1

@@ -1,5 +1,6 @@
 #include "panic.h"
-#include "../console/kprintf.h"
+#include "arch/cpu.h"
+#include "../../kernel/console/kprintf.h"
 
 __attribute__((noreturn))
 void panic(const char* msg) {
@@ -11,7 +12,9 @@ void panic(const char* msg) {
     // 상세 로그는 kprintf로 (Serial + VGA 모두)
     kprintf("\n[PANIC] %s\n", msg ? msg : "(no message)");
 
+    arch_disable_interrupts();  // 추상화 레이어 사용
+    
     for (;;) {
-        __asm__ __volatile__("cli; hlt");
+        arch_halt();  // 추상화 레이어 사용
     }
 }

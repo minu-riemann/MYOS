@@ -2,6 +2,7 @@
 #include "isr.h"
 #include "pic.h"
 #include "pit.h"
+#include "../../../include/arch/timer.h"
 #include "../../../kernel/console/kprintf.h"
 #include "../../../kernel/time/time.h"
 
@@ -15,12 +16,12 @@ void irq_register_handler(uint8_t irq, irq_handler_t handler) {
 
 static void irq0_timer(regs_t* r) {
     (void)r;
-    pit_on_tick();
+    arch_timer_on_tick();  // 추상화 레이어 사용
     time_on_tick();
 
     // 너무 자주 로그를 출력하면 안되므로, 100틱 처리
-    if ((pit_ticks() % 100)  == 0) {
-        kprintf("[TICK] 100 ticks\n");
+    if ((arch_timer_ticks() % 100) == 0) {  // pit_ticks() → arch_timer_ticks()
+        // kprintf("[TICK] 100 ticks\n");
     }
 }
 

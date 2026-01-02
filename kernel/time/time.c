@@ -1,18 +1,19 @@
 #include "time.h"
-#include "../console/kprintf.h"  
-#include "../panic/panic.h"
+#include "arch/timer.h"
+#include "../../kernel/console/kprintf.h"  
+#include "../../kernel/panic/panic.h"
 
 static volatile uint64_t g_ticks = 0;
 static uint32_t g_hz = 0;
 
 void time_on_tick(void) {
     g_ticks++;
+    arch_timer_on_tick();  // 아키텍처별 타이머 tick
 }
 
 uint64_t timer_ticks(void) {
-    // 32-bit 환경에서 64-bit 읽기 경쟁을 피하려면 원칙적으로 IRQ disable이 필요하지만,
-    // Phase1 busy-wait 용도로는 대부분 충분합니다.
-    // 더 안전하게 하려면 arch 레벨에서 IRQ off/on을 제공한 뒤 보호하면 됩니다.
+    // arch_timer_ticks()를 사용하거나, g_ticks를 사용
+    // 일단 g_ticks를 유지하되, arch_timer_on_tick()을 호출하도록 수정
     return g_ticks;
 }
 

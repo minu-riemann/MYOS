@@ -5,10 +5,9 @@
 #include "memory/multiboot.h"
 #include "memory/heap.h"
 
-#include "../arch/x86/cpu/gdt.h"
-#include "../arch/x86/interrupt/idt.h"
-#include "../arch/x86/interrupt/irq.h"
-#include "../arch/x86/interrupt/pit.h"
+#include "arch/cpu.h"
+#include "arch/interrupt.h"
+#include "arch/timer.h"
 
 #include "console/kprintf.h"
 
@@ -44,28 +43,25 @@ void kernel_main(uint32_t magic, uint32_t mb_addr) {
     kprintf("[INFO] kernel_main entered\n");
 
     // 기본 플랫폼 초기화
-    kprintf("[INFO] loading GDT...\n");
-    gdt_init();
-    kprintf("[INFO] GDT loaded\n");
+    kprintf("[INFO] Initializing CPU...\n");
+    arch_cpu_init();
+    kprintf("[INFO] CPU initialized\n");
 
-    kprintf("[INFO] loading IDT...\n");
-    idt_init();
-    kprintf("[INFO] IDT loaded\n");
-
-    kprintf("[INFO] init IRQ/PIC...\n");
-    irq_init();
+    kprintf("[INFO] Initializing interrupts...\n");
+    arch_interrupt_init();
+    kprintf("[INFO] Interrupts initialized\n");
 
     kprintf("[INFO] init keyboard...\n");
     keyboard_init();
 
-    kprintf("[INFO] init PIT...\n");
-    pit_init(100); // 100Hz tick
+    kprintf("[INFO] Initializing timer...\n");
+    arch_timer_init(100); // 100Hz tick
     time_set_hz(100);
 
-    // 인터럽트 활성화 (키보드 입력을 받기 위해 필요)
-    kprintf("[INFO] Enabling interrupts (sti)\n");
-    __asm__ __volatile__("sti");
-
+    // 인터럽트 활성화
+    kprintf("[INFO] Enabling interrupts\n");
+    arch_enable_interrupts();
+    
     // -------------------------
     // STEP2: Multiboot mmap
     // -------------------------
